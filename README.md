@@ -9,159 +9,88 @@
 ![image](https://github.com/user-attachments/assets/4729c91d-14c4-476a-8ed1-0d4373ad82ab)
 
 
-
-# Kubernetes Deployment on AWS EKS with Persistent Volume
+# Kubernetes Deployment on Amazon EKS with Persistent Volume
 
 ## Overview
-This project deploys a Kubernetes application on **Amazon EKS** with **Persistent Volume (PV) and Persistent Volume Claim (PVC)** for data persistence.
+This repository contains Kubernetes manifests for deploying an application on **Amazon EKS** with **Persistent Volumes (PV)**. The configuration files are stored in the `kube/` directory and include resources such as:
+- **ConfigMap**
+- **Service**
+- **Persistent Volume Claim (PVC)**
+- **StorageClass**
+- **Deployment**
+- **Ingress**
 
 ## Prerequisites
-Before proceeding, ensure you have the following installed:
+Ensure you have the following tools installed:
+- [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
+- [eksctl](https://eksctl.io/)
+- [AWS CLI](https://aws.amazon.com/cli/)
+- [Helm](https://helm.sh/docs/intro/install/)
 
-- AWS CLI ([Install Guide](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html))
-- kubectl ([Install Guide](https://kubernetes.io/docs/tasks/tools/install-kubectl/))
-- eksctl ([Install Guide](https://eksctl.io/introduction/installation/))
-- Helm ([Install Guide](https://helm.sh/docs/intro/install/))
-- AWS IAM permissions to create EKS clusters and associated resources
+## Deploying to Amazon EKS
 
-## Clone the Repository
+### 1. Create an EKS Cluster
 ```sh
-git clone https://github.com/Divas-Sagta/divas-k8s-assignment.git
-cd divas-k8s-assignment
+eksctl create cluster \
+  --name divas-cluster \
+  --region <aws-region> \
+  --nodegroup-name standard-workers \
+  --node-type t3.medium \
+  --nodes 2 \
+  --nodes-min 1 \
+  --nodes-max 3 \
+  --managed
 ```
 
----
-
-## Step 1: Create an EKS Cluster
+### 2. Configure kubectl
 ```sh
-eksctl create cluster --name divas-cluster --region us-east-1 --nodegroup-name divas-node-group --nodes 2 --nodes-min 1 --nodes-max 3 --managed
+aws eks update-kubeconfig --name divas-cluster --region <aws-region>
+kubectl get nodes  # Verify cluster is running
 ```
-This command:
-- Creates an EKS cluster named `divas-cluster`.
-- Deploys it in the `us-east-1` region.
-- Creates a managed node group with 2 worker nodes (auto scales between 1 and 3 nodes).
 
----
-
-## Step 2: Configure Storage with EBS (Elastic Block Store)
-
-### Create a Persistent Volume (PV)
-```yaml
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: ebs-pv
-spec:
-  capacity:
-    storage: 5Gi
-  volumeMode: Filesystem
-  accessModes:
-    - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: gp2
-  awsElasticBlockStore:
-    volumeID: <YOUR_EBS_VOLUME_ID>
-    fsType: ext4
-```
-**Apply the PV:**
+### 3. Apply Storage Class & Persistent Volume Claim (PVC)
 ```sh
-kubectl apply -f ebs-pv.yaml
+kubectl apply -f kube/storageclass.yaml
+kubectl apply -f kube/pvc.yaml
 ```
 
-### Create a Persistent Volume Claim (PVC)
-```yaml
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: ebs-pvc
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 5Gi
-  storageClassName: gp2
-```
-**Apply the PVC:**
+### 4. Deploy ConfigMap, Services, and Deployment
 ```sh
-kubectl apply -f ebs-pvc.yaml
+kubectl apply -f kube/configmap.yaml
+kubectl apply -f kube/service.yaml
+kubectl apply -f kube/deployment.yaml
 ```
 
----
-
-## Step 3: Deploy the Application
-
-### Deploy the Application with Storage
-Modify the `deployment.yaml` file to mount the PVC:
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: divas-app
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: divas-app
-  template:
-    metadata:
-      labels:
-        app: divas-app
-    spec:
-      containers:
-      - name: divas-app-container
-        image: divas-sagta/divas-app:latest
-        volumeMounts:
-          - mountPath: "/data"
-            name: storage
-      volumes:
-        - name: storage
-          persistentVolumeClaim:
-            claimName: ebs-pvc
-```
-**Apply the Deployment:**
+### 5. Deploy Ingress (Optional - Requires ALB Controller)
 ```sh
-kubectl apply -f deployment.yaml
+kubectl apply -f kube/ingress.yaml
 ```
 
----
+## Verifying Deployment
+- Check running pods:
+  ```sh
+  kubectl get pods -n default
+  ```
+- Check services:
+  ```sh
+  kubectl get svc
+  ```
+- Describe Persistent Volume:
+  ```sh
+  kubectl describe pvc <pvc-name>
+  ```
 
-## Step 4: Expose the Application
-
-### Create a Service
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: divas-service
-spec:
-  selector:
-    app: divas-app
-  ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 8080
-  type: LoadBalancer
-```
-**Apply the Service:**
+## Cleanup Resources
+To delete the deployment and the cluster:
 ```sh
-kubectl apply -f service.yaml
+kubectl delete -f kube/
+eksctl delete cluster --name divas-cluster --region <aws-region>
 ```
-This exposes the application using an AWS **Elastic Load Balancer (ELB)**.
-
----
-
-## Step 5: Verify Deployment
-```sh
-kubectl get pods
-kubectl get svc divas-service
-```
-Copy the **EXTERNAL-IP** from the `kubectl get svc` output and open it in a browser.
-
----
 
 ## Conclusion
-This project sets up an **EKS cluster** with **Persistent Storage (EBS-backed PVC)**, deploys an application, and exposes it using a **LoadBalancer**. 🎯🚀
+This project deploys a **Kubernetes application** on **Amazon EKS** with **persistent storage** using EBS-backed Persistent Volumes. Ingress is set up for external access, and Helm can be used to deploy additional services like monitoring and logging.
+
+
 
 
 
