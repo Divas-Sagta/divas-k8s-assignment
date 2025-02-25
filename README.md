@@ -8,6 +8,12 @@
 
 ![image](https://github.com/user-attachments/assets/4729c91d-14c4-476a-8ed1-0d4373ad82ab)
 
+![Uploading image.png…]()
+
+![Uploading image.png…]()
+
+
+
 
 # Kubernetes Deployment on Amazon EKS with Persistent Volume
 
