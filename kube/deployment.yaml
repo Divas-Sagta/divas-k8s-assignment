@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assignment
+  labels:
+    app: assignment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: assignment
+  template:
+    metadata:
+      name: assignment
+      labels:
+        app: assignment
+    spec:
+      containers:
+        - name: assignment
+          envFrom:
+            - configMapRef:
+                name: port
+          image: 376129881919.dkr.ecr.us-east-1.amazonaws.com/divas-assignment:latest
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: ebs-storage
+              mountPath: /etc/todos
+      restartPolicy: Always
+
+      volumes: 
+       - name: ebs-storage
+         persistentVolumeClaim:
+           claimName: divas-pvc
